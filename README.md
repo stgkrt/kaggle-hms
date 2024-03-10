@@ -6,16 +6,10 @@ devcontainerでコンテナビルドが終わったときにscripts/setup_dev.sh
 sshから接続した状態でgit cloneから始めると、dotfilesがないとエラーが出ますがリビルドすれば正常に使用できます。
 pipのresolverでerrorが出ますがprecommitは動くのでとりあえずそのままで。
 
-# directory
-    ├── .devcontainer            <- Container settings.
-    ├── input/                   <- Competition Datasets.
-    ├── notebooks/               <- Jupyter notebooks.
-    ├── scripts/                 <- Scripts.
-    ├── src/                     <- Source code. This sould be Python module.
-    ├── working/                 <- Output models and train logs.
-    │
-    ├── .dockerignore
-    ├── .gitignore
-    ├── .pre-commit-config.yaml  <- pre-commit settings.
-    ├── setup.cfg                <- formatter/linter settings in vscode.
-    └── README.md                <- The top-level README for developers.
+
+のーとぶっく移植中
+https://www.kaggle.com/code/stgkrtua/hms-efficientnetb0-train
+
+データセット二つ追加でダウンロードしないといけないっぽい
+https://www.kaggle.com/datasets/cdeotte/brain-spectrograms
+https://www.kaggle.com/datasets/seanbearden/eeg-spectrogram-by-lead-id-unique
