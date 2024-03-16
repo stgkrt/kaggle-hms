@@ -1,6 +1,10 @@
 class CFG:
-    wandb = False
-    VERSION = "debug"
+    competition_name = "hms"
+    wandb = True
+    exp_name = "debug"
+    exp_category = "baseline"
+    if exp_name == "debug":
+        exp_category = "debug"
     debug = True
     train = True
     apex = True
@@ -11,7 +15,7 @@ class CFG:
     SparK = False
     t4_gpu = False
     USE_MIXUP = True
-    scheduler = "OneCycleLR"
+    scheduler = "CosineAnnealingLR"
     # CosineAnnealingLR params
     cosanneal_params = {"T_max": 6, "eta_min": 1e-5, "last_epoch": -1}
     # ReduceLROnPlateau params
@@ -25,11 +29,12 @@ class CFG:
     # CosineAnnealingWarmRestarts params
     cosanneal_res_params = {"T_0": 20, "eta_min": 1e-6, "T_mult": 1, "last_epoch": -1}
     print_freq = 50
-    num_workers = 1
+    num_workers = 2
     model_name = "tf_efficientnet_b0_ns"
     optimizer = "Adan"
-    # epochs = 5
-    epochs = 1
+    epochs = 5
+    if debug:
+        epochs = 1
     factor = 0.9
     patience = 2
     eps = 1e-6
@@ -66,5 +71,5 @@ class CFG:
     specs_path = "/kaggle/input/brain-spectrograms/specs.npy"
     eggs_path = "/kaggle/input/eeg-spectrogram-by-lead-id-unique/eeg_specs.npy"
     train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/train.csv"
-    POP_1_DIR = "/kaggle/working/debug_pop1/"
+    OUTPUT_DIR = "/kaggle/working/"
     device = "cuda"

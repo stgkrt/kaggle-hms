@@ -1,13 +1,14 @@
 import gc
+import os
 import time
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-import wandb
 from torch import nn
 from torch.utils.data import DataLoader
 
+import wandb
 from src.data.dataloader import CustomDataset
 from src.log_utils import AverageMeter, timeSince
 from src.model.get_model import CustomModel
@@ -146,7 +147,7 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
     if CFG.stage2_pop2:
         model_weight = (
             CFG.POP_1_DIR
-            + f"{CFG.model_name}_fold{fold}_best_version{CFG.VERSION}_stage1.pth"
+            + f"{CFG.model_name}_fold{fold}_best_{CFG.exp_name}_stage1.pth"
         )
         checkpoint = torch.load(model_weight, map_location=CFG.device)
         model.load_state_dict(checkpoint["model"])
@@ -210,32 +211,38 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
                     model.module.state_dict() if CFG.t4_gpu else model.state_dict()
                 )
                 model_name = CFG.model_name
-                model_name += f"_fold{fold}_best_version{CFG.VERSION}_stage1.pth"
+                model_name += f"_fold{fold}_best_{CFG.exp_name}_stage1.pth"
+                model_path = os.path.join(directory, model_name)
                 torch.save(
                     {"model": state_dict, "predictions": predictions},
-                    directory + model_name,
+                    model_path,
                 )
             else:
                 state_dict = (
                     model.module.state_dict() if CFG.t4_gpu else model.state_dict()
                 )
                 model_name = CFG.model_name
-                model_name += f"_fold{fold}_best_version{CFG.VERSION}_stage2.pth"
+                model_name += f"_fold{fold}_best_{CFG.exp_name}_stage2.pth"
+                model_path = os.path.join(directory, model_name)
                 torch.save(
                     {"model": state_dict, "predictions": predictions},
-                    directory + model_name,
+                    model_path,
                 )
 
     if CFG.stage1_pop1:
+        model_path = os.path.join(
+            directory, f"{CFG.model_name}_fold{fold}_best_{CFG.exp_name}_stage1.pth"
+        )
         predictions = torch.load(
-            directory
-            + f"{CFG.model_name}_fold{fold}_best_version{CFG.VERSION}_stage1.pth",
+            model_path,
             map_location=torch.device("cpu"),
         )["predictions"]
     else:
+        model_path = os.path.join(
+            directory, f"{CFG.model_name}_fold{fold}_best_{CFG.exp_name}_stage2.pth"
+        )
         predictions = torch.load(
-            directory
-            + f"{CFG.model_name}_fold{fold}_best_version{CFG.VERSION}_stage2.pth",
+            model_path,
             map_location=torch.device("cpu"),
         )["predictions"]
     valid_folds[[f"pred_{c}" for c in CFG.target_cols]] = predictions
