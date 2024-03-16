@@ -50,7 +50,7 @@ def kl_divergence(
         return np.average(solution.mean())
 
 
-def score(
+def competition_score(
     solution: pd.DataFrame,
     submission: pd.DataFrame,
     row_id_column_name: str,
@@ -108,3 +108,34 @@ def score(
         micro_average=micro_average,
         sample_weights=sample_weights,
     )
+
+
+if __name__ == "__main__":
+    import warnings
+
+    warnings.filterwarnings("ignore")
+    output_dir = "/kaggle/working/"
+    exp_name = "exp000_b4"
+    model_name = "tf_efficientnet_b4"
+    oof_basename = "tf_efficientnet_b4_oof_df_versionexp001_b4_stage1.csv"
+    oof_df_path = f"{output_dir}/{exp_name}/{oof_basename}"
+    oof_df = pd.read_csv(oof_df_path)
+    oof_df = oof_df[oof_df["fold"] == 0].reset_index(drop=True)
+
+    target_cols = [
+        "eeg_id",
+        "seizure_vote",
+        "lpd_vote",
+        "gpd_vote",
+        "lrda_vote",
+        "grda_vote",
+        "other_vote",
+    ]
+    solution = oof_df[target_cols]
+    pred_cols = [col for col in oof_df.columns if "pred_" in col]
+    pred_cols = ["eeg_id"] + pred_cols
+    submission = oof_df[pred_cols]
+    # columnをpred_を除いたものにrename
+    submission = submission.rename(columns=lambda x: x.replace("pred_", ""))
+
+    print(competition_score(solution, submission, "eeg_id"))

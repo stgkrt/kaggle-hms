@@ -105,3 +105,28 @@ class CustomDataset(Dataset):
             ]
         )
         return transforms(image=img)["image"]
+
+
+if __name__ == "__main__":
+    from src.config import CFG
+
+    config = CFG()
+    train = pd.read_csv(config.train_csv)
+    train = train[
+        train["label_id"].isin(
+            np.load(config.eggs_path, allow_pickle=True).item().keys()
+        )
+    ].copy()
+    train = train.reset_index(drop=True)
+    train = train.iloc[:10]
+    dataset = CustomDataset(train, config, mode="train", augment=True)
+    # for i in range(10):
+    #     print(dataset[i])
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=2, shuffle=True, num_workers=0
+    )
+    for x in dataloader:
+        print(x["spectrogram"].shape)
+        print(x["labels"].shape)
+        break
+    print("Done")

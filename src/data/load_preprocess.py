@@ -44,3 +44,12 @@ def load_and_preprocess(CFG: CFG) -> pd.DataFrame:
     train = split_cv(train, CFG)
 
     return train
+
+
+if __name__ == "__main__":
+    from src.config import CFG
+
+    config = CFG()
+    train = load_and_preprocess(config)
+    print(train.head())
+    print(train.columns)
