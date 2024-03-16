@@ -32,7 +32,7 @@ if __name__ == "__main__":
                 oof_df = pd.concat([oof_df, _oof_df])
                 scores.append(score)
                 LOGGER.info(f"========== fold: {fold} result ==========")
-                LOGGER.info(f"Score with best loss weights : {score}")
+                LOGGER.info(f"Score best : {score}")
         oof_df = oof_df.reset_index(drop=True)
         LOGGER.info("========== CV ==========")
         for fold, _score in enumerate(scores):

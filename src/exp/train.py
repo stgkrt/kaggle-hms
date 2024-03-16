@@ -21,7 +21,6 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
     model.train()
     scaler = torch.cuda.amp.GradScaler(enabled=CFG.apex)
     losses = AverageMeter()
-    start = time.time()
     global_step = 0
     for step, batch in enumerate(train_loader):
         spectrogram = batch["spectrogram"].to(CFG.device)
@@ -37,9 +36,7 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
             loss = loss / CFG.gradient_accumulation_steps
         losses.update(loss.item(), batch_size)
         scaler.scale(loss).backward()
-        grad_norm = torch.nn.utils.clip_grad_norm_(
-            model.parameters(), CFG.max_grad_norm
-        )
+
         if (step + 1) % CFG.gradient_accumulation_steps == 0:
             scaler.step(optimizer)
             scaler.update()
@@ -53,16 +50,6 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
                 "Epoch: [{0}][{1}/{2}] "
                 "Elapsed {remain:s} "
                 "Loss: {loss.val:.4f}({loss.avg:.4f}) "
-                "Grad: {grad_norm:.4f}  "
-                "LR: {lr:.8f}  ".format(
-                    epoch + 1,
-                    step,
-                    len(train_loader),
-                    remain=timeSince(start, float(step + 1) / len(train_loader)),
-                    loss=losses,
-                    grad_norm=grad_norm,
-                    lr=scheduler.get_lr()[0],
-                )
             )
         if CFG.wandb:
             wandb.log(
@@ -184,6 +171,8 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
         # eval
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, CFG)
 
+        if not CFG.batch_scheduler:
+            scheduler.step()
         elapsed = time.time() - start_time
         log_message = f"Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}"
         log_message += f"avg_val_loss: {avg_val_loss:.4f}  time: {elapsed:.0f}s"

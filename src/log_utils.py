@@ -18,7 +18,7 @@ def init_wandb(configs: CFG):
             name=configs.exp_name,
             reinit=True,
             save_code=True,
-            tags=[configs.model_name],
+            tags=[configs.model_name, configs.scheduler],
         )
 
 
