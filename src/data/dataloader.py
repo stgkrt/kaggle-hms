@@ -98,10 +98,10 @@ class CustomDataset(Dataset):
 
         transforms = A.Compose(
             [
-                A.HorizontalFlip(p=0.5),
-                A.XYMasking(**params1, p=0.3),
-                A.XYMasking(**params2, p=0.3),
-                A.XYMasking(**params3, p=0.3),
+                # A.HorizontalFlip(p=0.5),
+                A.XYMasking(**params1, p=0.5),
+                A.XYMasking(**params2, p=0.5),
+                A.XYMasking(**params3, p=0.5),
             ]
         )
         return transforms(image=img)["image"]

@@ -1,9 +1,10 @@
 from typing import Optional
 
-import kaggle_metric_utilities
 import numpy as np
 import pandas as pd
 import pandas.api.types
+
+from src.kaggle_metrics import kaggle_metric_utilities
 
 
 class ParticipantVisibleError(Exception):
@@ -53,7 +54,7 @@ def kl_divergence(
 def competition_score(
     solution: pd.DataFrame,
     submission: pd.DataFrame,
-    row_id_column_name: str,
+    # row_id_column_name: str,
     epsilon: float = 10**-15,
     micro_average: bool = True,
     sample_weights_column_name: Optional[str] = None,
@@ -77,8 +78,8 @@ def competition_score(
     micro_average: bool. Row-wise average if True, column-wise average if False.
 
     """
-    del solution[row_id_column_name]
-    del submission[row_id_column_name]
+    # del solution[row_id_column_name]
+    # del submission[row_id_column_name]
 
     sample_weights = None
     if sample_weights_column_name:

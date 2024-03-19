@@ -3,13 +3,14 @@ import os
 import time
 
 import numpy as np
+import pandas as pd
 import torch
-import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader
 
 import wandb
 from src.data.dataloader import CustomDataset
+from src.kaggle_metrics.kaggle_kl_div import competition_score
 from src.log_utils import AverageMeter, timeSince
 from src.model.get_model import CustomModel
 from src.model.losses import KLDivBCEWithLogitsLoss, get_criterion, mixup_data
@@ -32,7 +33,9 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
         with torch.cuda.amp.autocast(enabled=CFG.apex):
             y_preds = model(mixed_X)
             # loss = criterion(F.log_softmax(y_preds, dim=1), labels)
-            loss = new_criterion(F.log_softmax(y_preds, dim=1), y_a, y_b, lam)
+            # loss = new_criterion(F.log_softmax(y_preds, dim=1), y_a, y_b, lam)
+            # predにsigmoidをかける
+            loss = new_criterion(torch.sigmoid(y_preds), y_a, y_b, lam)
         if CFG.gradient_accumulation_steps > 1:
             loss = loss / CFG.gradient_accumulation_steps
         losses.update(loss.item(), batch_size)
@@ -78,11 +81,16 @@ def valid_fn(valid_loader, model, criterion, CFG):
         batch_size = labels.size(0)
         with torch.no_grad():
             y_preds = model(spectrogram)
-            loss = criterion(F.log_softmax(y_preds, dim=1), labels)
+            # loss = criterion(F.log_softmax(y_preds, dim=1), labels)
+            loss = criterion(torch.sigmoid(y_preds), labels)
         if CFG.gradient_accumulation_steps > 1:
             loss = loss / CFG.gradient_accumulation_steps
         losses.update(loss.item(), batch_size)
         preds.append(nn.Softmax(dim=1)(y_preds).to("cpu").numpy())
+        # sigmoidをかけたものをpredsに追加(合計は1になるように正規化)
+        # sigmoid_preds = torch.sigmoid(y_preds).to("cpu").numpy()
+        # sigmoid_preds = sigmoid_preds / sigmoid_preds.sum(axis=1, keepdims=True)
+        # preds.append(sigmoid_preds)
         if step % CFG.print_freq == 0 or step == (len(valid_loader) - 1):
             print(
                 "EVAL: [{0}/{1}] "
@@ -164,13 +172,11 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
         print("loss function is not implemented. supported loss functions are:")
         print("BCEWithLogitsLoss or KLDivLoss or KLDivBCEWithLogitsLoss")
         raise NotImplementedError
-    score_fn = nn.KLDivLoss(reduction="batchmean")
+
     best_score = np.inf
 
     for epoch in range(CFG.epochs):
-
         start_time = time.time()
-
         # train
         avg_loss = train_fn(
             fold,
@@ -185,16 +191,16 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
 
         # eval
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, CFG)
-        competition_score = score_fn(
-            torch.tensor(predictions),
-            torch.tensor(valid_labels),
-        )
+        pred_df = pd.DataFrame(predictions, columns=CFG.target_cols)
+        target_df = pd.DataFrame(valid_labels, columns=CFG.target_cols)
+        score = competition_score(target_df, pred_df)
+
         if not CFG.batch_scheduler:
             scheduler.step()
         elapsed = time.time() - start_time
         log_message = f"Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}"
         log_message += f", avg_val_loss: {avg_val_loss:.4f}"
-        log_message += f", score : {competition_score} time: {elapsed:.0f}s"
+        log_message += f", score : {score:.4f} time: {elapsed:.0f}s"
         LOGGER.info(log_message)
 
         if CFG.wandb:
@@ -203,21 +209,13 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
                     f"[fold{fold}] epoch": epoch + 1,
                     f"[fold{fold}] avg_train_loss": avg_loss,
                     f"[fold{fold}] avg_val_loss": avg_val_loss,
-                    # f"[fold{fold}] score": score,
+                    f"[fold{fold}] score": score,
                 }
             )
 
-        # if best_score > avg_val_loss:
-        #     best_score = avg_val_loss
-        #     LOGGER.info(
-        #         f"Epoch {epoch+1} - Save Best valid loss: {avg_val_loss:.4f} Model"
-        #     )
-        if best_score > competition_score:
-            best_score = competition_score
-            LOGGER.info(
-                f"Epoch {epoch+1} - Save Best valid loss: {competition_score:.4f} Model"
-            )
-
+        if best_score > score:
+            best_score = score
+            LOGGER.info(f"Epoch {epoch+1} - Save Best valid score: {score:.4f} Model")
             # CPMP: save the original model.
             # It is stored as the module attribute of the DP model.
             if CFG.stage1_pop1:

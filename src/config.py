@@ -1,14 +1,15 @@
 class CFG:
-    debug = False
+    debug = True
     competition_name = "hms"
     wandb = True
-    exp_name = "exp001_notrepeat_inputs_reliablewithover10_votes"
+    exp_name = "exp002_reliablewithover10_KLDivBCE_sigmoid"
     exp_category = "baseline"
     epochs = 5
     if debug:
         epochs = 2
         exp_name = "debug"
         exp_category = "debug"
+        wandb = False
     model_name = "tf_efficientnet_b0_ns"
     # loss = "BCEWithLogitsLoss"
     # loss = "KLDivLoss"
@@ -83,8 +84,7 @@ class CFG:
     specs_path = "/kaggle/input/brain-spectrograms/specs.npy"
     eggs_path = "/kaggle/input/eeg-spectrogram-by-lead-id-unique/eeg_specs.npy"
     # train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/train.csv"
-    train_csv = (
-        "/kaggle/input/hms-harmful-brain-activity-classification/reliable_votes.csv"
-    )
+    train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/"
+    train_csv += "reliable_votes_withover10.csv"
     OUTPUT_DIR = "/kaggle/working/"
     device = "cuda"

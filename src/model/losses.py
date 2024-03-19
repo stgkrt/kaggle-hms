@@ -27,7 +27,8 @@ class KLDivBCEWithLogitsLoss(nn.Module):
 
     def forward(self, y: torch.tensor, t: torch.tensor) -> torch.tensor:
         kl_div_loss = self.kl_div(y, t)
-        bce_loss = self.bce(y, t)
+        t_bin = torch.tensor(t > 0.1, dtype=torch.float32).to(CFG.device)
+        bce_loss = self.bce(y, t_bin)
         loss = self.alpha * kl_div_loss + (1 - self.alpha) * bce_loss
 
         return loss
