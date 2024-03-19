@@ -12,7 +12,7 @@ import wandb
 from src.data.dataloader import CustomDataset
 from src.log_utils import AverageMeter, timeSince
 from src.model.get_model import CustomModel
-from src.model.losses import get_criterion, mixup_data
+from src.model.losses import KLDivBCEWithLogitsLoss, get_criterion, mixup_data
 from src.model.optimizers import build_optimizer
 from src.model.schedulers import get_scheduler
 
@@ -21,6 +21,7 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
     model.train()
     scaler = torch.cuda.amp.GradScaler(enabled=CFG.apex)
     losses = AverageMeter()
+    start = time.time()
     global_step = 0
     for step, batch in enumerate(train_loader):
         spectrogram = batch["spectrogram"].to(CFG.device)
@@ -36,7 +37,6 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
             loss = loss / CFG.gradient_accumulation_steps
         losses.update(loss.item(), batch_size)
         scaler.scale(loss).backward()
-
         if (step + 1) % CFG.gradient_accumulation_steps == 0:
             scaler.step(optimizer)
             scaler.update()
@@ -49,7 +49,13 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
             print(
                 "Epoch: [{0}][{1}/{2}] "
                 "Elapsed {remain:s} "
-                "Loss: {loss.val:.4f}({loss.avg:.4f}) "
+                "Loss: {loss.val:.4f}({loss.avg:.4f}) ".format(
+                    epoch + 1,
+                    step,
+                    len(train_loader),
+                    remain=timeSince(start, float(step + 1) / len(train_loader)),
+                    loss=losses,
+                )
             )
         if CFG.wandb:
             wandb.log(
@@ -148,8 +154,17 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
     # ====================================================
     # loop
     # ====================================================
-    criterion = nn.KLDivLoss(reduction="batchmean")
-
+    if CFG.loss == "BCEWithLogitsLoss":
+        criterion = nn.BCEWithLogitsLoss()
+    elif CFG.loss == "KLDivLoss":
+        criterion = nn.KLDivLoss(reduction="batchmean")
+    elif CFG.loss == "KLDivBCEWithLogitsLoss":
+        criterion = KLDivBCEWithLogitsLoss()
+    else:
+        print("loss function is not implemented. supported loss functions are:")
+        print("BCEWithLogitsLoss or KLDivLoss or KLDivBCEWithLogitsLoss")
+        raise NotImplementedError
+    score_fn = nn.KLDivLoss(reduction="batchmean")
     best_score = np.inf
 
     for epoch in range(CFG.epochs):
@@ -170,12 +185,16 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
 
         # eval
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, CFG)
-
+        competition_score = score_fn(
+            torch.tensor(predictions),
+            torch.tensor(valid_labels),
+        )
         if not CFG.batch_scheduler:
             scheduler.step()
         elapsed = time.time() - start_time
         log_message = f"Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}"
-        log_message += f"avg_val_loss: {avg_val_loss:.4f}  time: {elapsed:.0f}s"
+        log_message += f", avg_val_loss: {avg_val_loss:.4f}"
+        log_message += f", score : {competition_score} time: {elapsed:.0f}s"
         LOGGER.info(log_message)
 
         if CFG.wandb:
@@ -188,11 +207,17 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
                 }
             )
 
-        if best_score > avg_val_loss:
-            best_score = avg_val_loss
+        # if best_score > avg_val_loss:
+        #     best_score = avg_val_loss
+        #     LOGGER.info(
+        #         f"Epoch {epoch+1} - Save Best valid loss: {avg_val_loss:.4f} Model"
+        #     )
+        if best_score > competition_score:
+            best_score = competition_score
             LOGGER.info(
-                f"Epoch {epoch+1} - Save Best valid loss: {avg_val_loss:.4f} Model"
+                f"Epoch {epoch+1} - Save Best valid loss: {competition_score:.4f} Model"
             )
+
             # CPMP: save the original model.
             # It is stored as the module attribute of the DP model.
             if CFG.stage1_pop1:

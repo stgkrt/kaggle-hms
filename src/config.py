@@ -1,15 +1,18 @@
 class CFG:
-    debug = True
+    debug = False
     competition_name = "hms"
     wandb = True
-    exp_name = "debug"
+    exp_name = "exp001_notrepeat_inputs_reliablewithover10_votes"
     exp_category = "baseline"
-    if exp_name == "debug":
-        exp_category = "debug"
     epochs = 5
     if debug:
-        epochs = 5
+        epochs = 2
+        exp_name = "debug"
+        exp_category = "debug"
     model_name = "tf_efficientnet_b0_ns"
+    # loss = "BCEWithLogitsLoss"
+    # loss = "KLDivLoss"
+    loss = "KLDivBCEWithLogitsLoss"
     # training configs
     train = True
     apex = True
@@ -72,13 +75,16 @@ class CFG:
         "pred_other_vote",
     ]
     n_fold = 5
-    # trn_fold = [0, 1, 2, 3, 4]
-    trn_fold = [0]
+    trn_fold = [0, 1, 2, 3, 4]
+    # trn_fold = [0]
     PATH = "/kaggle/input/hms-harmful-brain-activity-classification/"
     data_root = "/kaggle/input/hms-harmful-brain-activity-classification/train_eegs/"
     raw_eeg_path = "/kaggle/input/brain-eegs/eegs.npy"
     specs_path = "/kaggle/input/brain-spectrograms/specs.npy"
     eggs_path = "/kaggle/input/eeg-spectrogram-by-lead-id-unique/eeg_specs.npy"
-    train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/train.csv"
+    # train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/train.csv"
+    train_csv = (
+        "/kaggle/input/hms-harmful-brain-activity-classification/reliable_votes.csv"
+    )
     OUTPUT_DIR = "/kaggle/working/"
     device = "cuda"
