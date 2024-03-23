@@ -1,10 +1,13 @@
+import os
+import sys
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 import pandas.api.types
 
-from src.kaggle_metrics import kaggle_metric_utilities
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
+from kaggle_metrics import kaggle_metric_utilities
 
 
 class ParticipantVisibleError(Exception):
@@ -80,6 +83,61 @@ def competition_score(
     """
     # del solution[row_id_column_name]
     # del submission[row_id_column_name]
+
+    sample_weights = None
+    if sample_weights_column_name:
+        if sample_weights_column_name not in solution.columns:
+            raise ParticipantVisibleError(
+                f"{sample_weights_column_name} not found in solution columns"
+            )
+        sample_weights = solution.pop(sample_weights_column_name)
+
+    if sample_weights_column_name and not micro_average:
+        raise ParticipantVisibleError(
+            "Sample weights are only valid if `micro_average` is `True`"
+        )
+
+    for col in solution.columns:
+        if col not in submission.columns:
+            raise ParticipantVisibleError(f"Missing submission column {col}")
+
+    kaggle_metric_utilities.verify_valid_probabilities(solution, "solution")
+    kaggle_metric_utilities.verify_valid_probabilities(submission, "submission")
+
+    return kaggle_metric_utilities.safe_call_score(
+        kl_divergence,
+        solution,
+        submission,
+        epsilon=epsilon,
+        micro_average=micro_average,
+        sample_weights=sample_weights,
+    )
+
+
+def compute_each_score(
+    oof_: pd.DataFrame,
+    epsilon: float = 10**-15,
+    micro_average: bool = True,
+    sample_weights_column_name: str | None = None,
+    target_votes_cols=[
+        "seizure_vote",
+        "lpd_vote",
+        "gpd_vote",
+        "lrda_vote",
+        "grda_vote",
+        "other_vote",
+    ],
+) -> float:
+    oof_ = pd.DataFrame(oof_)
+    # make solution
+    solution_values = oof_.loc[target_votes_cols].values
+    solution = pd.DataFrame(solution_values.T, columns=target_votes_cols)
+    solution[target_votes_cols] = solution[target_votes_cols].astype(float)
+    # make submission
+    pred_cols = ["pred_" + col for col in target_votes_cols]
+    submission_values = oof_.loc[pred_cols].values
+    submission = pd.DataFrame(submission_values.T, columns=target_votes_cols)
+    submission[target_votes_cols] = submission[target_votes_cols].astype(float)
 
     sample_weights = None
     if sample_weights_column_name:
