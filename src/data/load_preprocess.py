@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import StratifiedGroupKFold
 
 from src.config import CFG
 
 
 def split_cv(train: pd.DataFrame, CFG: CFG) -> pd.DataFrame:
-    gkf = GroupKFold(n_splits=CFG.n_fold)
+    gkf = StratifiedGroupKFold(n_splits=CFG.n_fold)
 
     train["fold"] = -1
 
@@ -47,9 +47,39 @@ def load_and_preprocess(CFG: CFG) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+    import yaml
+
     from src.config import CFG
+    from src.log_utils import init_logger
 
     config = CFG()
     train = load_and_preprocess(config)
     print(train.head())
     print(train.columns)
+
+    logger = init_logger("/kaggle/input/fold_split.log")
+
+    for fold in range(config.n_fold):
+        # eeg_id をyamlに保存する
+        valid_eeg_ids = train[train["fold"] == fold]["eeg_id"].unique()
+        logger.info(f"Fold {fold}: {len(valid_eeg_ids)}")
+        logger.info(valid_eeg_ids)
+        with open(f"/kaggle/input/valid_eeg_ids_fold{fold}.yaml", "w") as f:
+            yaml.dump(valid_eeg_ids.tolist(), f)
+        # spectrogram_id をyamlに保存する
+        valid_spec_ids = train[train["fold"] == fold]["spectrogram_id"].unique()
+        logger.info(f"Fold {fold}: {len(valid_spec_ids)}")
+        logger.info(valid_spec_ids)
+        with open(f"/kaggle/input/valid_spec_ids_fold{fold}.yaml", "w") as f:
+            yaml.dump(valid_spec_ids.tolist(), f)
+
+        valid_df = train[train["fold"] == fold]
+        logger.info("valid value counts")
+        logger.info(valid_df["target"].value_counts())
+
+        train_df = train[train["fold"] != fold]
+        logger.info("train value counts")
+        logger.info(train_df["target"].value_counts())
+
+        logger.info("valid vote nums")
+        logger.info(valid_df["total_evaluators"].value_counts())
