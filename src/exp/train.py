@@ -5,6 +5,8 @@ import time
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
+import yaml
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -33,9 +35,9 @@ def train_fn(fold, train_loader, model, criterion, optimizer, epoch, scheduler, 
         with torch.cuda.amp.autocast(enabled=CFG.apex):
             y_preds = model(mixed_X)
             # loss = criterion(F.log_softmax(y_preds, dim=1), labels)
-            # loss = new_criterion(F.log_softmax(y_preds, dim=1), y_a, y_b, lam)
+            loss = new_criterion(F.log_softmax(y_preds, dim=1), y_a, y_b, lam)
             # predにsigmoidをかける
-            loss = new_criterion(torch.sigmoid(y_preds), y_a, y_b, lam)
+            # loss = new_criterion(torch.sigmoid(y_preds), y_a, y_b, lam)
         if CFG.gradient_accumulation_steps > 1:
             loss = loss / CFG.gradient_accumulation_steps
         losses.update(loss.item(), batch_size)
@@ -81,8 +83,8 @@ def valid_fn(valid_loader, model, criterion, CFG):
         batch_size = labels.size(0)
         with torch.no_grad():
             y_preds = model(spectrogram)
-            # loss = criterion(F.log_softmax(y_preds, dim=1), labels)
-            loss = criterion(torch.sigmoid(y_preds), labels)
+            loss = criterion(F.log_softmax(y_preds, dim=1), labels)
+            # loss = criterion(torch.sigmoid(y_preds), labels)
         if CFG.gradient_accumulation_steps > 1:
             loss = loss / CFG.gradient_accumulation_steps
         losses.update(loss.item(), batch_size)
@@ -113,13 +115,20 @@ def train_loop(folds, fold, directory, LOGGER, CFG):
     # loader
     # ====================================================
     if CFG.stage1_pop1:
-        train_folds = folds[folds["fold"] != fold].reset_index(drop=True)
+        # train_folds = folds[folds["fold"] != fold].reset_index(drop=True)
+        valid_ids_path = f"/kaggle/input/valid_eeg_ids_fold{fold}.yaml"
+        with open(valid_ids_path, "r") as file:
+            valid_ids = yaml.load(file, Loader=yaml.FullLoader)
+        train_folds = folds[~folds["eeg_id"].isin(valid_ids)].reset_index(drop=True)
     else:
         train_folds = folds[
             (folds["fold"] != fold) & (folds["total_evaluators"] >= 10)
         ].reset_index(drop=True)
-    valid_folds = folds[folds["fold"] == fold].reset_index(drop=True)
+    # valid_folds = folds[folds["fold"] == fold].reset_index(drop=True)
+    valid_folds = folds[folds["eeg_id"].isin(valid_ids)].reset_index(drop=True)
     valid_labels = valid_folds[CFG.target_cols].values
+    LOGGER.info(f"train data num: {len(train_folds)}")
+    LOGGER.info(f"valid data num: {len(valid_folds)}")
 
     train_dataset = CustomDataset(train_folds, CFG, augment=True, mode="train")
     valid_dataset = CustomDataset(valid_folds, CFG, augment=False, mode="train")
