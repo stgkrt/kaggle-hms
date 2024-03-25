@@ -11,7 +11,7 @@ def split_cv(train: pd.DataFrame, CFG: CFG) -> pd.DataFrame:
     train["fold"] = -1
 
     for fold_id, (_, val_idx) in enumerate(
-        gkf.split(train, y=train["target"], groups=train["patient_id"])
+        gkf.split(train, y=train["expert_consensus_total"], groups=train["patient_id"])
     ):
         train.loc[val_idx, "fold"] = fold_id
 
@@ -27,6 +27,11 @@ def load_and_preprocess(CFG: CFG) -> pd.DataFrame:
     train["total_evaluators"] = train[
         ["seizure_vote", "lpd_vote", "gpd_vote", "lrda_vote", "grda_vote", "other_vote"]
     ].sum(axis=1)
+
+    train["total_bin"] = train["total_evaluators"] // 3
+    train["expert_consensus_total"] = train["expert_consensus"].astype(str) + train[
+        "total_bin"
+    ].astype(str)
 
     print(f"There are {train.patient_id.nunique()} patients in the training data.")
     print(f"There are {train.eeg_id.nunique()} EEG IDs in the training data.")
