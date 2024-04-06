@@ -27,7 +27,9 @@ def load_and_preprocess(CFG: CFG) -> pd.DataFrame:
     train["total_evaluators"] = train[
         ["seizure_vote", "lpd_vote", "gpd_vote", "lrda_vote", "grda_vote", "other_vote"]
     ].sum(axis=1)
-
+    train = train[
+        (3 <= train["total_evaluators"]) & (train["total_evaluators"] <= 20)
+    ].reset_index(drop=True)
     train["total_bin"] = train["total_evaluators"] // 3
     train["expert_consensus_total"] = train["expert_consensus"].astype(str) + train[
         "total_bin"
@@ -58,6 +60,21 @@ if __name__ == "__main__":
     from src.log_utils import init_logger
 
     config = CFG()
+    train = pd.read_csv(CFG.train_csv)
+    TARGETS = train.columns[-6:]
+    print("Train shape:", train.shape)
+    print("Targets", list(TARGETS))
+
+    train["total_evaluators"] = train[
+        ["seizure_vote", "lpd_vote", "gpd_vote", "lrda_vote", "grda_vote", "other_vote"]
+    ].sum(axis=1)
+    train = train[
+        (3 <= train["total_evaluators"]) & (train["total_evaluators"] <= 20)
+    ].reset_index(drop=True)
+    train.to_csv(
+        "/kaggle/input/hms-harmful-brain-activity-classification/train_3to20.csv",
+        index=False,
+    )
     train = load_and_preprocess(config)
     print(train.head())
     print(train.columns)

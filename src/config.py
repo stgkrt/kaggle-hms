@@ -1,19 +1,20 @@
 class CFG:
-    debug = True
+    debug = False
     competition_name = "hms"
     wandb = True
-    exp_name = "exp002_reliablewithover10_KLDivBCE_sigmoid"
-    exp_category = "baseline"
+    exp_name = "exp004_effnet_b1_ns"
+    exp_category = "for_ensemble"
     epochs = 5
     if debug:
         epochs = 2
         exp_name = "debug"
         exp_category = "debug"
         wandb = False
-    model_name = "tf_efficientnet_b0_ns"
+    model_name = "tf_efficientnet_b1_ns"
+    # model_name = "resnet34d"
     # loss = "BCEWithLogitsLoss"
-    # loss = "KLDivLoss"
-    loss = "KLDivBCEWithLogitsLoss"
+    loss = "KLDivLoss"
+    # loss = "KLDivBCEWithLogitsLoss"
     # training configs
     train = True
     apex = True
