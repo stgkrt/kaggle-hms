@@ -1,6 +1,25 @@
 import math
+import os
 import time
 from logging import INFO, FileHandler, Formatter, StreamHandler, getLogger
+
+import wandb
+from src.config import CFG
+
+
+def init_wandb(configs: CFG):
+    if configs.wandb:
+        os.environ["WANDB_SILENT"] = "true"
+        os.environ["WANDB_MODE"] = "offline"
+        wandb.init(
+            project=configs.competition_name,
+            config=configs,
+            group=configs.exp_category,
+            name=configs.exp_name,
+            reinit=True,
+            save_code=True,
+            tags=[configs.model_name, configs.scheduler],
+        )
 
 
 def init_logger(log_file: str = "/kaggle/working/log/train.log") -> getLogger:

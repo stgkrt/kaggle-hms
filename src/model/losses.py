@@ -18,6 +18,22 @@ class KLDivLossWithLogits(nn.KLDivLoss):
         return loss
 
 
+class KLDivBCEWithLogitsLoss(nn.Module):
+    def __init__(self, alpha: float = 0.2) -> None:
+        super(KLDivBCEWithLogitsLoss, self).__init__()
+        self.alpha = alpha
+        self.kl_div = KLDivLossWithLogits()
+        self.bce = nn.BCEWithLogitsLoss()
+
+    def forward(self, y: torch.tensor, t: torch.tensor) -> torch.tensor:
+        kl_div_loss = self.kl_div(y, t)
+        t_bin = torch.tensor(t > 0.1, dtype=torch.float32).to(CFG.device)
+        bce_loss = self.bce(y, t_bin)
+        loss = self.alpha * kl_div_loss + (1 - self.alpha) * bce_loss
+
+        return loss
+
+
 def mixup_data(
     X: torch.Tensor, y: torch.Tensor, config: CFG, device: str, alpha: float = 1.0
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:

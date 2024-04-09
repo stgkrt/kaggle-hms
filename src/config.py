@@ -1,7 +1,21 @@
 class CFG:
-    wandb = False
-    VERSION = "debug"
-    debug = True
+    debug = False
+    competition_name = "hms"
+    wandb = True
+    exp_name = "exp004_effnet_b1_ns"
+    exp_category = "for_ensemble"
+    epochs = 5
+    if debug:
+        epochs = 2
+        exp_name = "debug"
+        exp_category = "debug"
+        wandb = False
+    model_name = "tf_efficientnet_b1_ns"
+    # model_name = "resnet34d"
+    # loss = "BCEWithLogitsLoss"
+    loss = "KLDivLoss"
+    # loss = "KLDivBCEWithLogitsLoss"
+    # training configs
     train = True
     apex = True
     stage1_pop1 = True
@@ -10,10 +24,16 @@ class CFG:
     FREEZE = False
     SparK = False
     t4_gpu = False
+    # augmentation
     USE_MIXUP = True
-    scheduler = "OneCycleLR"
+    # scheduler, optimizer
+    optimizer = "Adan"
+    scheduler = "CosineAnnealingLR"
+    batch_scheduler = False
+    lr = 1e-3
+    min_lr = 1e-6
     # CosineAnnealingLR params
-    cosanneal_params = {"T_max": 6, "eta_min": 1e-5, "last_epoch": -1}
+    cosanneal_params = {"T_max": epochs, "eta_min": min_lr, "last_epoch": -1}
     # ReduceLROnPlateau params
     reduce_params = {
         "mode": "min",
@@ -23,21 +43,19 @@ class CFG:
         "verbose": True,
     }
     # CosineAnnealingWarmRestarts params
-    cosanneal_res_params = {"T_0": 20, "eta_min": 1e-6, "T_mult": 1, "last_epoch": -1}
+    cosanneal_res_params = {
+        "T_0": epochs,
+        "eta_min": min_lr,
+        "T_mult": 1,
+        "last_epoch": -1,
+    }
     print_freq = 50
-    num_workers = 1
-    model_name = "tf_efficientnet_b0_ns"
-    optimizer = "Adan"
-    # epochs = 5
-    epochs = 1
+    num_workers = 2
     factor = 0.9
     patience = 2
     eps = 1e-6
-    lr = 1e-3
-    min_lr = 1e-6
     batch_size = 64
     weight_decay = 1e-2
-    batch_scheduler = True
     gradient_accumulation_steps = 1
     max_grad_norm = 1e7
     seed = 42
@@ -60,11 +78,14 @@ class CFG:
     ]
     n_fold = 5
     trn_fold = [0, 1, 2, 3, 4]
+    # trn_fold = [0]
     PATH = "/kaggle/input/hms-harmful-brain-activity-classification/"
     data_root = "/kaggle/input/hms-harmful-brain-activity-classification/train_eegs/"
     raw_eeg_path = "/kaggle/input/brain-eegs/eegs.npy"
     specs_path = "/kaggle/input/brain-spectrograms/specs.npy"
     eggs_path = "/kaggle/input/eeg-spectrogram-by-lead-id-unique/eeg_specs.npy"
-    train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/train.csv"
-    POP_1_DIR = "/kaggle/working/debug_pop1/"
+    # train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/train.csv"
+    train_csv = "/kaggle/input/hms-harmful-brain-activity-classification/"
+    train_csv += "reliable_votes_withover10.csv"
+    OUTPUT_DIR = "/kaggle/working/"
     device = "cuda"
